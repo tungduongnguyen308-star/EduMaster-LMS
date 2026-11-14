@@ -1,0 +1,26 @@
+import express from "express";
+import cors from "cors";
+import authRoutes from "./routes/auth.routes";
+import courseRoutes from "./routes/course.routes";
+import studentRoutes from "./routes/student.routes";
+import quizRoutes from "./routes/quiz.routes";
+import adminRoutes from "./routes/admin.routes";
+import { apiError } from "./lib/http";
+import { openapi } from "./docs/openapi";
+const app = express();
+app.disable("x-powered-by");
+app.use(cors({ origin: process.env.CLIENT_URL?.split(",") || ["http://localhost:5173"] }));
+app.use(express.json({ limit: "150kb" }));
+app.get("/", (_req, res) => res.json({ message: "EduMaster LMS API is running!", version: "1.0.0" }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/api/openapi.json", (_req, res) => res.json(openapi));
+app.get("/api/docs", (_req, res) => res.type('html').send(`<!doctype html><html><head><title>EduMaster API Docs</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" /></head><body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>SwaggerUIBundle({url:'/api/openapi.json',dom_id:'#swagger-ui'});</script></body></html>`));
+app.use("/api/auth", authRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/course-content", courseRoutes); // section/lesson and resources endpoints
+app.use("/api/enrollments", studentRoutes);
+app.use("/api/quizzes", quizRoutes);
+app.use("/api/admin", adminRoutes);
+app.use((_req, res) => { res.status(404).json({ message: "Không tìm thấy API" }); });
+app.use(apiError);
+export default app;

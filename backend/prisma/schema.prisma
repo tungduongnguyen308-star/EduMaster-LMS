@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  fullName     String
+  email        String   @unique
+  password     String
+  avatar       String?
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  courses      Course[]     @relation("InstructorCourses")
+  enrollments  Enrollment[]
+  progresses   LessonProgress[]
+  reviews      Review[]
+  refreshTokens RefreshToken[]
+  quizAttempts QuizAttempt[]
+}
+
+model Course {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String @db.Text
+  thumbnail    String?
+  price        Decimal      @default(0) @db.Decimal(10, 2)
+  status       CourseStatus @default(DRAFT)
+  instructorId Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  instructor   User         @relation("InstructorCourses", fields: [instructorId], references: [id])
+  sections     Section[]
+  enrollments  Enrollment[]
+  reviews      Review[]
+}
+
+model Section {
+  id        Int      @id @default(autoincrement())
+  title     String
+  position  Int      @default(0)
+  courseId  Int
+
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+}
+
+model Lesson {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String? @db.Text
+  videoUrl    String?
+  position    Int      @default(0)
+  sectionId   Int
+
+  section     Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progresses  LessonProgress[]
+  quiz       Quiz?
+  resources  LessonResource[]
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  studentId  Int
+  courseId   Int
+  enrolledAt DateTime @default(now())
+
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+}
+
+model LessonProgress {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  lessonId    Int
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?  @db.Text
+  userId    Int
+  courseId  Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+// Refresh Token luu duoi dang SHA-256, khong luu token goc.
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// LMS assessments. Answer keys are never sent in student-facing endpoints.
+model Quiz {
+  id         Int           @id @default(autoincrement())
+  title      String
+  lessonId   Int           @unique
+  timeLimit  Int?          // minutes, optional
+  createdAt  DateTime      @default(now())
+  lesson     Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions  QuizQuestion[]
+  attempts   QuizAttempt[]
+}
+
+model QuizQuestion {
+  id         Int          @id @default(autoincrement())
+  quizId     Int
+  text       String       @db.Text
+  position   Int          @default(0)
+  quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options    QuizOption[]
+  answers    QuizAnswer[]
+}
+
+model QuizOption {
+  id         Int          @id @default(autoincrement())
+  questionId Int
+  text       String
+  isCorrect  Boolean      @default(false)
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers    QuizAnswer[]
+}
+
+model QuizAttempt {
+  id         Int          @id @default(autoincrement())
+  quizId     Int
+  studentId  Int
+  score      Int
+  total      Int
+  createdAt  DateTime     @default(now())
+  quiz       Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student    User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers    QuizAnswer[]
+  @@index([quizId, studentId])
+}
+
+model QuizAnswer {
+  id         Int          @id @default(autoincrement())
+  attemptId  Int
+  questionId Int
+  optionId   Int
+  isCorrect  Boolean
+  attempt    QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  option     QuizOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  @@unique([attemptId, questionId])
+}
+
+model LessonResource {
+  id       Int    @id @default(autoincrement())
+  lessonId Int
+  name     String
+  url      String @db.Text
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}

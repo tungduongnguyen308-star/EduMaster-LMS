@@ -1,0 +1,22 @@
+{
+  "info": {"name": "EduMaster LMS API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:5000"},
+    {"key": "accessToken", "value": ""},
+    {"key": "refreshToken", "value": ""},
+    {"key": "courseId", "value": "1"},
+    {"key": "lessonId", "value": "1"}
+  ],
+  "item": [
+    {"name":"Health","request":{"method":"GET","url":"{{baseUrl}}/api/health"}},
+    {"name":"Register","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"fullName\":\"New Student\",\"email\":\"new.student@example.com\",\"password\":\"TestPass123!\"}"},"url":"{{baseUrl}}/api/auth/register"}},
+    {"name":"Login","event":[{"listen":"test","script":{"exec":["if (pm.response.code === 200) { const data = pm.response.json(); pm.collectionVariables.set('accessToken', data.accessToken); pm.collectionVariables.set('refreshToken', data.refreshToken); }"]}}],"request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"email\":\"new.student@example.com\",\"password\":\"TestPass123!\"}"},"url":"{{baseUrl}}/api/auth/login"}},
+    {"name":"My Profile","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/auth/me"}},
+    {"name":"Public courses","request":{"method":"GET","url":"{{baseUrl}}/api/courses"}},
+    {"name":"Enroll free course","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/enrollments/courses/{{courseId}}"}},
+    {"name":"My learning","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/enrollments/me"}},
+    {"name":"Lesson content","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/course-content/lessons/{{lessonId}}/content"}},
+    {"name":"Rotate Refresh Token","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"refreshToken\":\"{{refreshToken}}\"}"},"url":"{{baseUrl}}/api/auth/refresh"}},
+    {"name":"Logout","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\"refreshToken\":\"{{refreshToken}}\"}"},"url":"{{baseUrl}}/api/auth/logout"}}
+  ]
+}
